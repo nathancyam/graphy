@@ -1,0 +1,44 @@
+# GraphQL schema example
+#
+# https://gqlgen.com/getting-started/
+
+type Round {
+  id: ID!
+  name: String!
+  sequenceNo: Int!
+  routingCode: String!
+  provisionalDate: String!
+}
+
+type Query {
+  rounds(ids: [String!]!): [Round!]
+}
+
+input RoundInput {
+  name: String
+  sequenceNo: Int
+  routingCode: String
+  provisionalDate: String
+}
+
+interface UserError {
+  message: String!
+}
+
+type InvalidSequenceNumberError implements UserError {
+  message: String!
+}
+
+type DuplicateNameError implements UserError {
+  message: String!
+  duplicatedRound: Round!
+}
+
+type RoundUpdateResult {
+  userErrors: [UserError!]!
+  round: Round
+}
+
+type Mutation {
+  updateRound(id: ID!, input: RoundInput!): RoundUpdateResult!
+}
