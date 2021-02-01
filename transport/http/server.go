@@ -19,15 +19,15 @@ type AppServer struct {
 
 	mux         *http.ServeMux
 	resolver    *graphql.Resolver
-	healthCheck func() error
+	healthCheck HealthCheck
 }
 
-func New(resolver *graphql.Resolver, logger *zap.Logger) *AppServer {
+func New(resolver *graphql.Resolver, logger *zap.Logger, hChk HealthCheck) *AppServer {
 	srv := &AppServer{
 		Server:      nil,
 		Logger:      logger,
 		resolver:    resolver,
-		healthCheck: nil,
+		healthCheck: hChk,
 		mux:         http.NewServeMux(),
 	}
 
@@ -48,7 +48,7 @@ func (s *AppServer) attachHealthHandler() {
 			return
 		}
 
-		if err := s.healthCheck(); err != nil {
+		if err := s.healthCheck.Do(); err != nil {
 			w.WriteHeader(http.StatusGatewayTimeout)
 			w.Write([]byte(`{"status": "yellow", "reason": "neo4j connection could not be established"}`))
 			return

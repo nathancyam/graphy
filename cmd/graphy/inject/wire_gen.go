@@ -23,7 +23,8 @@ func InitialiseAppServer(logger *zap.Logger) (*http.AppServer, func(), error) {
 	}
 	roundRepository := graph.NewRoundRepository(driver, logger)
 	resolver := graphql.NewResolver(roundRepository, logger)
-	appServer := http.New(resolver, logger)
+	healthCheck := neo.NewHealthCheck(driver)
+	appServer := http.New(resolver, logger, healthCheck)
 	return appServer, func() {
 		cleanup()
 	}, nil

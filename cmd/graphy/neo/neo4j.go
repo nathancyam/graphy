@@ -51,3 +51,13 @@ func NewDriver(authToken neo4j.AuthToken, logger *zap.Logger) (neo4j.Driver, fun
 
 	return driver, cleanup, nil
 }
+
+type HealthCheck func() error
+
+func (h HealthCheck) Do() error {
+	return h()
+}
+
+func NewHealthCheck(driver neo4j.Driver) HealthCheck {
+	return driver.VerifyConnectivity
+}

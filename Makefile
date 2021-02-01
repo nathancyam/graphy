@@ -5,6 +5,11 @@ gqlgen:
 .PHONY: build
 build: go-build
 
+.PHONY: format
+format:
+	@echo "Formatting with gofmt"
+	gofmt -w .
+
 .PHONY: clean
 clean: go-clean ## Clean build cache and dependencies
 

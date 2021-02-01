@@ -16,8 +16,10 @@ func InitialiseAppServer(logger *zap.Logger) (*http.AppServer, func(), error) {
 	wire.Build(
 		neo.NewBasicAuth,
 		neo.NewDriver,
+		neo.NewHealthCheck,
 		graph.NewRoundRepository,
 		wire.Bind(new(rounds.Repository), new(*graph.RoundRepository)),
+		wire.Bind(new(http.HealthCheck), new(neo.HealthCheck)),
 		graphql.NewResolver,
 		http.New,
 	)
