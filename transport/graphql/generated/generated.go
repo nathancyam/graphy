@@ -10,6 +10,7 @@ import (
 	"graphy/transport/graphql/model"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
@@ -35,6 +36,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Grade() GradeResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
 }
@@ -48,6 +50,13 @@ type ComplexityRoot struct {
 		Message         func(childComplexity int) int
 	}
 
+	Grade struct {
+		Age    func(childComplexity int) int
+		Day    func(childComplexity int) int
+		ID     func(childComplexity int) int
+		Rounds func(childComplexity int) int
+	}
+
 	InvalidSequenceNumberError struct {
 		Message func(childComplexity int) int
 	}
@@ -57,6 +66,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		Grade  func(childComplexity int, id *string) int
 		Rounds func(childComplexity int, ids []string) int
 	}
 
@@ -74,10 +84,14 @@ type ComplexityRoot struct {
 	}
 }
 
+type GradeResolver interface {
+	Rounds(ctx context.Context, obj *model.Grade) ([]*model.Round, error)
+}
 type MutationResolver interface {
 	UpdateRound(ctx context.Context, id string, input model.RoundInput) (*model.RoundUpdateResult, error)
 }
 type QueryResolver interface {
+	Grade(ctx context.Context, id *string) (*model.Grade, error)
 	Rounds(ctx context.Context, ids []string) ([]*model.Round, error)
 }
 
@@ -110,6 +124,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.DuplicateNameError.Message(childComplexity), true
 
+	case "Grade.age":
+		if e.complexity.Grade.Age == nil {
+			break
+		}
+
+		return e.complexity.Grade.Age(childComplexity), true
+
+	case "Grade.day":
+		if e.complexity.Grade.Day == nil {
+			break
+		}
+
+		return e.complexity.Grade.Day(childComplexity), true
+
+	case "Grade.id":
+		if e.complexity.Grade.ID == nil {
+			break
+		}
+
+		return e.complexity.Grade.ID(childComplexity), true
+
+	case "Grade.rounds":
+		if e.complexity.Grade.Rounds == nil {
+			break
+		}
+
+		return e.complexity.Grade.Rounds(childComplexity), true
+
 	case "InvalidSequenceNumberError.message":
 		if e.complexity.InvalidSequenceNumberError.Message == nil {
 			break
@@ -128,6 +170,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UpdateRound(childComplexity, args["id"].(string), args["input"].(model.RoundInput)), true
+
+	case "Query.grade":
+		if e.complexity.Query.Grade == nil {
+			break
+		}
+
+		args, err := ec.field_Query_grade_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Grade(childComplexity, args["id"].(*string)), true
 
 	case "Query.rounds":
 		if e.complexity.Query.Rounds == nil {
@@ -266,7 +320,15 @@ type Round {
   provisionalDate: String!
 }
 
+type Grade {
+  id: ID!
+  age: String!
+  day: String!
+  rounds: [Round!]!
+}
+
 type Query {
+  grade(id: ID): Grade
   rounds(ids: [String!]!): [Round!]
 }
 
@@ -338,6 +400,20 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_grade_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *string
+	if tmp, ok := rawArgs["id"]; ok {
+		arg0, err = ec.unmarshalOID2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -459,6 +535,142 @@ func (ec *executionContext) _DuplicateNameError_duplicatedRound(ctx context.Cont
 	return ec.marshalNRound2ᚖgraphyᚋtransportᚋgraphqlᚋmodelᚐRound(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Grade_id(ctx context.Context, field graphql.CollectedField, obj *model.Grade) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Grade",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Grade_age(ctx context.Context, field graphql.CollectedField, obj *model.Grade) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Grade",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Age, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Grade_day(ctx context.Context, field graphql.CollectedField, obj *model.Grade) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Grade",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Day, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Grade_rounds(ctx context.Context, field graphql.CollectedField, obj *model.Grade) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Grade",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Grade().Rounds(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Round)
+	fc.Result = res
+	return ec.marshalNRound2ᚕᚖgraphyᚋtransportᚋgraphqlᚋmodelᚐRoundᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _InvalidSequenceNumberError_message(ctx context.Context, field graphql.CollectedField, obj *model.InvalidSequenceNumberError) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -532,6 +744,44 @@ func (ec *executionContext) _Mutation_updateRound(ctx context.Context, field gra
 	res := resTmp.(*model.RoundUpdateResult)
 	fc.Result = res
 	return ec.marshalNRoundUpdateResult2ᚖgraphyᚋtransportᚋgraphqlᚋmodelᚐRoundUpdateResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_grade(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_grade_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Grade(rctx, args["id"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Grade)
+	fc.Result = res
+	return ec.marshalOGrade2ᚖgraphyᚋtransportᚋgraphqlᚋmodelᚐGrade(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_rounds(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2030,6 +2280,57 @@ func (ec *executionContext) _DuplicateNameError(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var gradeImplementors = []string{"Grade"}
+
+func (ec *executionContext) _Grade(ctx context.Context, sel ast.SelectionSet, obj *model.Grade) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, gradeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Grade")
+		case "id":
+			out.Values[i] = ec._Grade_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "age":
+			out.Values[i] = ec._Grade_age(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "day":
+			out.Values[i] = ec._Grade_day(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "rounds":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Grade_rounds(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var invalidSequenceNumberErrorImplementors = []string{"InvalidSequenceNumberError", "UserError"}
 
 func (ec *executionContext) _InvalidSequenceNumberError(ctx context.Context, sel ast.SelectionSet, obj *model.InvalidSequenceNumberError) graphql.Marshaler {
@@ -2103,6 +2404,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
+		case "grade":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_grade(ctx, field)
+				return res
+			})
 		case "rounds":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -2496,6 +2808,43 @@ func (ec *executionContext) marshalNRound2graphyᚋtransportᚋgraphqlᚋmodel�
 	return ec._Round(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalNRound2ᚕᚖgraphyᚋtransportᚋgraphqlᚋmodelᚐRoundᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Round) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRound2ᚖgraphyᚋtransportᚋgraphqlᚋmodelᚐRound(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
 func (ec *executionContext) marshalNRound2ᚖgraphyᚋtransportᚋgraphqlᚋmodelᚐRound(ctx context.Context, sel ast.SelectionSet, v *model.Round) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -2861,6 +3210,40 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalOGrade2graphyᚋtransportᚋgraphqlᚋmodelᚐGrade(ctx context.Context, sel ast.SelectionSet, v model.Grade) graphql.Marshaler {
+	return ec._Grade(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOGrade2ᚖgraphyᚋtransportᚋgraphqlᚋmodelᚐGrade(ctx context.Context, sel ast.SelectionSet, v *model.Grade) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Grade(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOID2string(ctx context.Context, v interface{}) (string, error) {
+	return graphql.UnmarshalID(v)
+}
+
+func (ec *executionContext) marshalOID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	return graphql.MarshalID(v)
+}
+
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOID2string(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec.marshalOID2string(ctx, sel, *v)
 }
 
 func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}) (int, error) {

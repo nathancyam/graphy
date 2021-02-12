@@ -9,6 +9,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/neo4j/neo4j-go-driver v1.8.3
 	github.com/spf13/viper v1.7.1
+	github.com/vektah/dataloaden v0.3.0 // indirect
 	github.com/vektah/gqlparser/v2 v2.1.0
 	go.uber.org/zap v1.16.0
 )

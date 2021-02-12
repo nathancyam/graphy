@@ -7,6 +7,10 @@ type HealthCheck interface {
 type NoOpHealthCheck struct {
 }
 
+func NewNoOpHealthCheck() *NoOpHealthCheck {
+	return &NoOpHealthCheck{}
+}
+
 func (n NoOpHealthCheck) Do() error {
 	return nil
 }

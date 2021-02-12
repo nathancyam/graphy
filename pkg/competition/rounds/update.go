@@ -1,6 +1,12 @@
 package rounds
 
-import "context"
+import (
+	"context"
+)
+
+type PolicyHandler interface {
+	Do(ctx context.Context, req *UpdateRequest) (context.Context, error)
+}
 
 type UpdateRequest struct {
 	RoundID string
@@ -15,5 +21,6 @@ func NewUpdateService(repository Repository) *UpdateService {
 	return &UpdateService{Repository: repository}
 }
 
-func (s *UpdateService) Update(ctx context.Context, req *UpdateRequest) {
+func (s *UpdateService) Update(ctx context.Context, req *UpdateRequest) (interface{}, error) {
+	return nil, nil
 }

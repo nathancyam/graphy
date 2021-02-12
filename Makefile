@@ -15,7 +15,7 @@ clean: go-clean ## Clean build cache and dependencies
 
 .PHONY: wire
 wire:
-	@cd cmd/graphy/inject && wire
+	@cd cmd/graphy/inject && go generate
 
 go-build:
 	@echo "Building Go services..."

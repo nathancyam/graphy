@@ -14,18 +14,20 @@ import (
 )
 
 type AppServer struct {
-	Server *http.Server
-	Logger *zap.Logger
+	Server      *http.Server
+	Logger      *zap.Logger
+	Middlewares graphql.Middlewares
 
 	mux         *http.ServeMux
 	resolver    *graphql.Resolver
 	healthCheck HealthCheck
 }
 
-func New(resolver *graphql.Resolver, logger *zap.Logger, hChk HealthCheck) *AppServer {
+func New(resolver *graphql.Resolver, logger *zap.Logger, hChk HealthCheck, mdlwares graphql.Middlewares) *AppServer {
 	srv := &AppServer{
 		Server:      nil,
 		Logger:      logger,
+		Middlewares: mdlwares,
 		resolver:    resolver,
 		healthCheck: hChk,
 		mux:         http.NewServeMux(),
@@ -39,23 +41,26 @@ func New(resolver *graphql.Resolver, logger *zap.Logger, hChk HealthCheck) *AppS
 }
 
 func (s *AppServer) attachHealthHandler() {
+	okRes := []byte(`{"status": "green", "reason": "ok"}`)
+	failedRes := []byte(`{"status": "yellow", "reason": "neo4j connection could not be established"}`)
+
 	s.mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		if s.healthCheck == nil {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status": "green", "reason": "ok"}`))
+			w.Write(okRes)
 			return
 		}
 
 		if err := s.healthCheck.Do(); err != nil {
 			w.WriteHeader(http.StatusGatewayTimeout)
-			w.Write([]byte(`{"status": "yellow", "reason": "neo4j connection could not be established"}`))
+			w.Write(failedRes)
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "green", "reason": "ok"}`))
+		w.Write(okRes)
 		return
 	})
 }
@@ -66,6 +71,8 @@ func (s *AppServer) attachGqlgenHandlers() {
 	graphHandler := func(writer http.ResponseWriter, request *http.Request) {
 		start := time.Now()
 		requestID := RandomString(32)
+
+		writer.Header().Set("request-id", requestID)
 		defer func(begin time.Time) {
 			took := time.Since(begin)
 			s.Logger.Info("request complete", zap.Duration("took", took), zap.Int64("ms", took.Milliseconds()), zap.String("request-id", requestID))
@@ -75,14 +82,19 @@ func (s *AppServer) attachGqlgenHandlers() {
 		graphSrv.ServeHTTP(writer, request.WithContext(reqCtx))
 	}
 
+	graphEndpoint := "/"
 	if config.PlaygroundEnabled {
+		graphEndpoint = "/query"
 		s.Logger.Info("playground enabled, setting GraphQL endpoint to /query")
 		s.mux.HandleFunc("/", playground.Handler("GraphQL playground", "/query"))
-		s.mux.HandleFunc("/query", graphHandler)
-		return
 	}
 
-	s.mux.HandleFunc("/", graphHandler)
+	var acc = graphHandler
+	for _, m := range s.Middlewares {
+		acc = m(acc)
+	}
+
+	s.mux.HandleFunc(graphEndpoint, acc)
 }
 
 func (s *AppServer) Shutdown(ctx context.Context) error {

@@ -10,7 +10,15 @@ type Round {
   provisionalDate: String!
 }
 
+type Grade {
+  id: ID!
+  age: String!
+  day: String!
+  rounds: [Round!]!
+}
+
 type Query {
+  grade(id: ID): Grade
   rounds(ids: [String!]!): [Round!]
 }
 

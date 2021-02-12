@@ -3,19 +3,22 @@ package graphql
 import (
 	"context"
 	"go.uber.org/zap"
-	"graphy/pkg/rounds"
+	"graphy/pkg/competition/grades"
+	"graphy/pkg/competition/rounds"
 	"time"
 )
 
 type Resolver struct {
-	RoundRepo rounds.Repository
-	Logger    *zap.Logger
+	RoundService rounds.Service
+	GradeSvc     *grades.Service
+	Logger       *zap.Logger
 }
 
-func NewResolver(rounds rounds.Repository, logger *zap.Logger) *Resolver {
+func NewResolver(rounds rounds.Service, gradeSvc *grades.Service, logger *zap.Logger) *Resolver {
 	return &Resolver{
-		RoundRepo: rounds,
-		Logger:    logger,
+		Logger:       logger,
+		RoundService: rounds,
+		GradeSvc:     gradeSvc,
 	}
 }
 
