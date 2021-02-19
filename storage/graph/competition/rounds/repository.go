@@ -3,7 +3,6 @@ package rounds
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 	"go.uber.org/zap"
@@ -87,7 +86,7 @@ RETURN { id: g.id, items: COLLECT(r) } as out
 				var r rounds.Round
 				n, ok := i.(neo4j.Node)
 				if !ok {
-					return nil, err
+					return nil, graph.ErrNotNode
 				}
 
 				if err := mapstructure.Decode(n.Props(), &r); err != nil {
@@ -102,11 +101,7 @@ RETURN { id: g.id, items: COLLECT(r) } as out
 		return nil, err
 	})
 
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return res, err
 }
 
 func toRounds(i interface{}) ([]rounds.Round, error) {
@@ -116,12 +111,12 @@ func toRounds(i interface{}) ([]rounds.Round, error) {
 	}
 
 	var out = make([]rounds.Round, len(col))
-	for _, i := range col {
+	for index, i := range col {
 		j, ok := i.(rounds.Round)
 		if !ok {
 			return nil, graph.ErrNotRound
 		}
-		out = append(out, j)
+		out[index] = j
 	}
 	return out, nil
 }
@@ -131,9 +126,6 @@ func hydrateStruct(round *rounds.Round, val interface{}) error {
 	if !ok {
 		return graph.ErrNotNode
 	}
-	if err := mapstructure.Decode(node.Props(), round); err != nil {
-		return fmt.Errorf("invalid node properties %w", err)
-	}
 
-	return nil
+	return mapstructure.Decode(node.Props(), round)
 }

@@ -84,9 +84,9 @@ func (s *AppServer) attachGqlgenHandlers() {
 
 	graphEndpoint := "/"
 	if config.PlaygroundEnabled {
-		graphEndpoint = "/query"
-		s.Logger.Info("playground enabled, setting GraphQL endpoint to /query")
-		s.mux.HandleFunc("/", playground.Handler("GraphQL playground", "/query"))
+		graphEndpoint = "/repogen"
+		s.Logger.Info("playground enabled, setting GraphQL endpoint to /repogen")
+		s.mux.HandleFunc("/", playground.Handler("GraphQL playground", "/repogen"))
 	}
 
 	var acc = graphHandler

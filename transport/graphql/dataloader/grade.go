@@ -20,8 +20,8 @@ func NewGradeDLoader(roundSvc rounds.Service) GradeDataLoaderProvider {
 				}
 
 				var out = make([][]*model.Round, len(gradeIDs))
-				for index, id := range gradeIDs {
-					rr := m[id]
+				for index, gradeID := range gradeIDs {
+					rr := m[gradeID]
 					var rs = make([]*model.Round, len(rr))
 					for j, r := range rr {
 						o := model.Round(r)

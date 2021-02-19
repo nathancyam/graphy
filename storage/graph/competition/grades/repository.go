@@ -1,4 +1,4 @@
-package grades
+package grade
 
 import (
 	"context"
@@ -15,11 +15,15 @@ type Repository struct {
 	driver neo4j.Driver
 }
 
+func NewRepository(driver neo4j.Driver, logger *zap.Logger) *Repository {
+	return &Repository{driver: driver, logger: logger}
+}
+
 func (r Repository) FindByID(ctx context.Context, id string) (*grades.Grade, error) {
-	var grade grades.Grade
+	var model grades.Grade
 
 	_, err := graph.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
-		out, err := tx.Run(`MATCH (g:Grade { id: $id }) RETURN g LIMIT 1`, map[string]interface{}{
+		out, err := tx.Run(`MATCH (grade:Grade) WHERE res.id = $id RETURN grade LIMIT 1`, map[string]interface{}{
 			"id": id,
 		})
 		if err != nil {
@@ -27,15 +31,12 @@ func (r Repository) FindByID(ctx context.Context, id string) (*grades.Grade, err
 		}
 
 		if out.Next() {
-			rec, ok := out.Record().Get("g")
+			node, ok := out.Record().Get("grade")
 			if !ok {
 				return nil, errors.New("")
 			}
-			node, ok := rec.(neo4j.Node)
-			if !ok {
-				return nil, errors.New("")
-			}
-			if err := mapstructure.Decode(node.Props(), &grade); err != nil {
+
+			if err = hydrateStruct(&model, node); err != nil {
 				return nil, err
 			}
 		}
@@ -44,16 +45,39 @@ func (r Repository) FindByID(ctx context.Context, id string) (*grades.Grade, err
 			return nil, err
 		}
 
-		return grade, nil
+		return model, nil
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &grade, nil
+	return &model, nil
 }
 
-func NewRepository(logger *zap.Logger, driver neo4j.Driver) *Repository {
-	return &Repository{logger: logger, driver: driver}
+func toList(i interface{}) ([]grades.Grade, error) {
+	col, ok := i.([]interface{})
+	if !ok {
+		return nil, graph.ErrNotSlice
+	}
+
+	var out = make([]grades.Grade, len(col))
+	for index, i := range col {
+		j, ok := i.(grades.Grade)
+		if !ok {
+			return nil, graph.ErrUnmarshal
+		}
+		out[index] = j
+	}
+	return out, nil
 }
+
+func hydrateStruct(model *grades.Grade, val interface{}) error {
+	node, ok := val.(neo4j.Node)
+	if !ok {
+		return graph.ErrNotNode
+	}
+
+	return mapstructure.Decode(node.Props(), model)
+}
+

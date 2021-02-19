@@ -1,0 +1,169 @@
+package {{.RepositoryDefinition.Package}}
+
+import (
+    "context"
+    "errors"
+    "github.com/mitchellh/mapstructure"
+    "github.com/neo4j/neo4j-go-driver/neo4j"
+    "go.uber.org/zap"
+    {{range $i, $import := .Imports -}}
+    "{{$import}}"
+    {{end -}}
+)
+
+type Repository struct {
+    logger *zap.Logger
+    driver neo4j.Driver
+}
+
+func NewRepository(driver neo4j.Driver, logger *zap.Logger) *Repository {
+    return &Repository{driver: driver, logger: logger}
+}
+
+{{range $index, $method := $.Methods -}}
+func (r Repository) {{$method.Definition.Name}}{{$method.Params}} {{$method.Return}} {
+    {{if $method.IsSingular -}}
+    var model {{$method.GetBaseModel}}
+
+    _, err := graph.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
+        out, err := tx.Run(`{{$method.Definition.Cypher}}`, map[string]interface{}{
+            {{range $i, $p := $method.CypherParams -}}
+            "{{$p}}": {{$p}},
+            {{end -}}
+        })
+        if err != nil {
+            return nil, err
+        }
+
+        if out.Next() {
+            node, ok := out.Record().Get("{{$method.Definition.Output}}")
+            if !ok {
+                return nil, errors.New("")
+            }
+
+            if err = hydrateStruct(&model, node); err != nil {
+                return nil, err
+            }
+        }
+
+        if err := out.Err(); err != nil {
+            return nil, err
+        }
+
+        return model, nil
+    })
+
+    if err != nil {
+        return nil, err
+    }
+
+    return &model, nil
+    {{end -}}
+    {{if $method.IsDataloader -}}
+    var res = make({{$method.GetDataloaderMap}}, len({{$method.GetDataloaderSlice}}))
+
+    _, err := graph.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
+        out, err := tx.Run(`{{$method.Definition.Cypher}}`, map[string]interface{}{
+            {{range $i, $p := $method.CypherParams -}}
+            "{{$p}}": {{$p}},
+            {{end -}}
+        })
+
+        if err != nil {
+            return nil, err
+        }
+
+        if out.Next() {
+            o, ok := out.Record().Get("{{$method.Definition.Output}}")
+            if !ok {
+                return nil, errors.New("")
+            }
+
+            m := o.(map[string]interface{})
+            id := m["id"].(string)
+            items := m["items"].([]interface{})
+
+            var col = make({{$method.ModelType}}, len(items))
+            for index, i := range items {
+                var m {{$method.GetBaseModel}}
+                if err := hydrateStruct(&m, i); err != nil {
+                    return nil, err
+                }
+                col[index] = m
+            }
+
+            res[id] = col
+        }
+
+        return nil, err
+    })
+
+    return res, err
+    {{end -}}
+    {{if $method.IsSlice -}}
+    res, err := graph.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
+        out, err := tx.Run("{{$method.Definition.Cypher}}", map[string]interface{}{
+            {{range $i, $p := $method.CypherParams -}}
+            "{{$p}}": {{$p}},
+            {{end -}}
+        })
+        if err != nil {
+            return nil, err
+        }
+
+        var rs []interface{}
+        for res.Next() {
+            for _, v := range res.Record().Values() {
+                var model {{$method.ModelType}}
+                if err = hydrateStruct(&model, v); err != nil {
+                    return nil, err
+                }
+
+                rs = append(rs, model)
+            }
+        }
+
+        if res.Err() != nil {
+            return nil, res.Err()
+        }
+
+        return rs, nil
+    })
+
+    if err != nil {
+        return nil, err
+    }
+
+    return toList(res)
+    {{end -}}
+}
+
+{{end -}}
+{{range $index, $model := $.Models -}}
+func toList(i interface{}) ([]{{$model}}, error) {
+	col, ok := i.([]interface{})
+	if !ok {
+		return nil, graph.ErrNotSlice
+	}
+
+	var out = make([]{{$model}}, len(col))
+	for index, i := range col {
+		j, ok := i.({{$model}})
+		if !ok {
+			return nil, graph.ErrUnmarshal
+		}
+		out[index] = j
+	}
+	return out, nil
+}
+
+func hydrateStruct(model *{{$model}}, val interface{}) error {
+	node, ok := val.(neo4j.Node)
+	if !ok {
+		return graph.ErrNotNode
+	}
+
+	return mapstructure.Decode(node.Props(), model)
+}
+
+{{end}}

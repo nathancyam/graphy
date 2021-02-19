@@ -1,0 +1,8 @@
+package: grade
+name: GradeRepository
+implements: graphy/pkg/competition/grades.Repository
+methods:
+  - name: FindByID
+    cypher: |-
+      MATCH (grade:Grade) WHERE res.id = $id RETURN grade LIMIT 1
+    output: grade

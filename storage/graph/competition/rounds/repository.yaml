@@ -1,0 +1,14 @@
+name: RoundRepository
+implements: graphy/pkg/competition/rounds.Repository
+methods:
+  - name: FindRoundsByID
+    cypher: |-
+      MATCH (res:Round) WHERE res.id IN $roundIDs RETURN res LIMIT 10
+    output: res
+  - name: FindGradeRounds
+    cypher: |-
+      MATCH (g:Grade)-[:HAS_ROUND]->(r:Round)
+      WHERE g.id IN $gradeIDs
+      RETURN { id: g.id, items: COLLECT(r) } as out
+    output: out
+    dataloader: true
