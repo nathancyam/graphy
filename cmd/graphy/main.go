@@ -36,8 +36,9 @@ func main() {
 
 	// Cleanup when signal received.
 	sig := <-done
-	logger.Info("received signal to stop, draining HTTP requests", zap.String("signal", sig.String()))
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	logger.Info("received signal to stop, draining HTTP requests", zap.String("signal", sig.String()), zap.Int("drainInSeconds", config.RequestDrainInSeconds))
+	drain := time.Duration(config.RequestDrainInSeconds)
+	ctx, cancel := context.WithTimeout(context.Background(), drain*time.Second)
 
 	defer func() {
 		cleanup()

@@ -40,7 +40,8 @@ var graphqlSet = wire.NewSet(
 	graphql.NewResolver,
 	dataloader.NewGradeDLoader,
 	dataloader.NewDataloaderMiddleware,
-	graphql.NewMiddlewares,
+	http.NewRequestIDMiddleware,
+	http.NewMiddlewares,
 )
 
 func InitialiseAppServer(logger *zap.Logger) (*http.AppServer, func(), error) {

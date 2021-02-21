@@ -13,7 +13,9 @@ type Loaders struct {
 	RoundsByID GradeRoundLoader
 }
 
-func NewDataloaderMiddleware(g GradeDataLoaderProvider) GradeMiddleware {
+//go:generate go run ../../../cmd/dlgen/main.go graphy/transport/graphql/dataloader.GradeRoundLoader graphy/pkg/competition/rounds.Service:FindGradeRounds dest
+
+func NewDataloaderMiddleware(g GradeRoundLoaderProvider) GradeMiddleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) {
 			reqCtx := request.Context()

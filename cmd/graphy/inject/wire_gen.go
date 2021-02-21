@@ -9,7 +9,7 @@ import (
 	"github.com/google/wire"
 	"go.uber.org/zap"
 	"graphy/cmd/graphy/neo"
-	grades2 "graphy/pkg/competition/grades"
+	"graphy/pkg/competition/grades"
 	rounds2 "graphy/pkg/competition/rounds"
 	"graphy/storage/graph/competition/grades"
 	"graphy/storage/graph/competition/rounds"
@@ -29,13 +29,14 @@ func InitialiseAppServer(logger *zap.Logger) (*http.AppServer, func(), error) {
 	roundRepository := rounds.NewRoundRepository(driver, logger)
 	updateService := rounds2.NewUpdateService(roundRepository)
 	serviceImpl := rounds2.NewServiceImpl(updateService, roundRepository)
-	repository := grades.NewRepository(logger, driver)
-	service := grades2.NewService(repository)
+	repository := grade.NewRepository(driver, logger)
+	service := grades.NewService(repository)
 	resolver := graphql.NewResolver(serviceImpl, service, logger)
 	noOpHealthCheck := http.NewNoOpHealthCheck()
-	gradeDataLoaderProvider := dataloader.NewGradeDLoader(serviceImpl)
-	gradeMiddleware := dataloader.NewDataloaderMiddleware(gradeDataLoaderProvider)
-	middlewares := graphql.NewMiddlewares(gradeMiddleware)
+	gradeRoundLoaderProvider := dataloader.NewGradeDLoader(serviceImpl)
+	gradeMiddleware := dataloader.NewDataloaderMiddleware(gradeRoundLoaderProvider)
+	requestIDMiddleware := http.NewRequestIDMiddleware(logger)
+	middlewares := http.NewMiddlewares(gradeMiddleware, requestIDMiddleware)
 	appServer := http.New(resolver, logger, noOpHealthCheck, middlewares)
 	return appServer, func() {
 		cleanup()
@@ -48,6 +49,6 @@ var neoSet = wire.NewSet(neo.NewBasicAuth, neo.NewDriver, http.NewNoOpHealthChec
 
 var roundSet = wire.NewSet(rounds.NewRoundRepository, wire.Bind(new(rounds2.Repository), new(*rounds.RoundRepository)), rounds2.NewUpdateService, rounds2.NewServiceImpl, wire.Bind(new(rounds2.Service), new(*rounds2.ServiceImpl)))
 
-var gradeSet = wire.NewSet(grades.NewRepository, wire.Bind(new(grades2.Repository), new(*grades.Repository)), grades2.NewService)
+var gradeSet = wire.NewSet(grade.NewRepository, wire.Bind(new(grades.Repository), new(*grade.Repository)), grades.NewService)
 
-var graphqlSet = wire.NewSet(graphql.NewResolver, dataloader.NewGradeDLoader, dataloader.NewDataloaderMiddleware, graphql.NewMiddlewares)
+var graphqlSet = wire.NewSet(graphql.NewResolver, dataloader.NewGradeDLoader, dataloader.NewDataloaderMiddleware, http.NewRequestIDMiddleware, http.NewMiddlewares)

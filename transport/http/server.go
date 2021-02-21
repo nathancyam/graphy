@@ -10,24 +10,23 @@ import (
 	"graphy/transport/graphql/generated"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 type AppServer struct {
 	Server      *http.Server
 	Logger      *zap.Logger
-	Middlewares graphql.Middlewares
+	Middlewares Middlewares
 
 	mux         *http.ServeMux
 	resolver    *graphql.Resolver
 	healthCheck HealthCheck
 }
 
-func New(resolver *graphql.Resolver, logger *zap.Logger, hChk HealthCheck, mdlwares graphql.Middlewares) *AppServer {
+func New(resolver *graphql.Resolver, logger *zap.Logger, hChk HealthCheck, middlewares Middlewares) *AppServer {
 	srv := &AppServer{
-		Server:      nil,
+		Server:      nil, // Need to build everything else before. We could omit this, but it's more explicit this way.
 		Logger:      logger,
-		Middlewares: mdlwares,
+		Middlewares: middlewares,
 		resolver:    resolver,
 		healthCheck: hChk,
 		mux:         http.NewServeMux(),
@@ -68,28 +67,14 @@ func (s *AppServer) attachHealthHandler() {
 func (s *AppServer) attachGqlgenHandlers() {
 	graphSrv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: s.resolver}))
 
-	graphHandler := func(writer http.ResponseWriter, request *http.Request) {
-		start := time.Now()
-		requestID := RandomString(32)
-
-		writer.Header().Set("request-id", requestID)
-		defer func(begin time.Time) {
-			took := time.Since(begin)
-			s.Logger.Info("request complete", zap.Duration("took", took), zap.Int64("ms", took.Milliseconds()), zap.String("request-id", requestID))
-		}(start)
-
-		reqCtx := context.WithValue(request.Context(), "request-id", requestID)
-		graphSrv.ServeHTTP(writer, request.WithContext(reqCtx))
-	}
-
 	graphEndpoint := "/"
 	if config.PlaygroundEnabled {
-		graphEndpoint = "/repogen"
-		s.Logger.Info("playground enabled, setting GraphQL endpoint to /repogen")
-		s.mux.HandleFunc("/", playground.Handler("GraphQL playground", "/repogen"))
+		graphEndpoint = "/query"
+		s.Logger.Info("playground enabled, setting GraphQL endpoint to /query")
+		s.mux.HandleFunc("/", playground.Handler("GraphQL playground", graphEndpoint))
 	}
 
-	var acc = graphHandler
+	var acc = graphSrv.ServeHTTP
 	for _, m := range s.Middlewares {
 		acc = m(acc)
 	}
@@ -102,6 +87,10 @@ func (s *AppServer) Shutdown(ctx context.Context) error {
 }
 
 func (s *AppServer) ListenAndServe() error {
+	if s.Server == nil {
+		s.Logger.Error("server struct not initialised. *AppServer.build() should be called.")
+	}
+
 	err := s.Server.ListenAndServe()
 	if err != nil {
 		if err != http.ErrServerClosed {
