@@ -7,7 +7,7 @@ import (
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 	"go.uber.org/zap"
 	"graphy/pkg/competition/rounds"
-	"graphy/storage/graph"
+	neo4jstore "graphy/store/neo4j"
 )
 
 var RoundsQuery = `MATCH (res:Round) WHERE res.id IN $roundIDs RETURN res LIMIT 10`
@@ -21,8 +21,8 @@ func NewRoundRepository(driver neo4j.Driver, logger *zap.Logger) *RoundRepositor
 	return &RoundRepository{driver: driver, logger: logger}
 }
 
-func (r RoundRepository) FindRoundsByID(_ context.Context, roundIDs []string) ([]rounds.Round, error) {
-	res, err := graph.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
+func (r RoundRepository) FindRoundsByID(ctx context.Context, roundIDs []string) ([]rounds.Round, error) {
+	res, err := neo4jstore.For(ctx).ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		res, err := tx.Run(RoundsQuery, map[string]interface{}{
 			"roundIDs": roundIDs,
 		})
@@ -59,7 +59,7 @@ func (r RoundRepository) FindRoundsByID(_ context.Context, roundIDs []string) ([
 func (r RoundRepository) FindGradeRounds(ctx context.Context, gradeIDs []string) (map[string][]rounds.Round, error) {
 	var res = make(map[string][]rounds.Round, len(gradeIDs))
 
-	_, err := graph.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
+	_, err := neo4jstore.For(ctx).ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		out, err := tx.Run(`
 MATCH (g:Grade)-[:HAS_ROUND]->(r:Round)
 WHERE g.id IN $gradeIDs
@@ -86,7 +86,7 @@ RETURN { id: g.id, items: COLLECT(r) } as out
 				var r rounds.Round
 				n, ok := i.(neo4j.Node)
 				if !ok {
-					return nil, graph.ErrNotNode
+					return nil, neo4jstore.ErrNotNode
 				}
 
 				if err := mapstructure.Decode(n.Props(), &r); err != nil {
@@ -107,14 +107,14 @@ RETURN { id: g.id, items: COLLECT(r) } as out
 func toRounds(i interface{}) ([]rounds.Round, error) {
 	col, ok := i.([]interface{})
 	if !ok {
-		return nil, graph.ErrNotSlice
+		return nil, neo4jstore.ErrNotSlice
 	}
 
 	var out = make([]rounds.Round, len(col))
 	for index, i := range col {
 		j, ok := i.(rounds.Round)
 		if !ok {
-			return nil, graph.ErrNotRound
+			return nil, neo4jstore.ErrNotRound
 		}
 		out[index] = j
 	}
@@ -124,7 +124,7 @@ func toRounds(i interface{}) ([]rounds.Round, error) {
 func hydrateStruct(round *rounds.Round, val interface{}) error {
 	node, ok := val.(neo4j.Node)
 	if !ok {
-		return graph.ErrNotNode
+		return neo4jstore.ErrNotNode
 	}
 
 	return mapstructure.Decode(node.Props(), round)

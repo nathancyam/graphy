@@ -89,11 +89,7 @@ func Generate(dlPkgStr string, svcPkgStr string, destination string) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(destination, src, 0644); err != nil {
-		return err
-	}
-
-	return nil
+	return ioutil.WriteFile(destination, src, 0644)
 }
 
 func parseSvcString(svcString string) (string, string, error) {

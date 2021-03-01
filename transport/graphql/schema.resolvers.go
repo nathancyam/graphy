@@ -12,15 +12,19 @@ import (
 )
 
 func (r *gradeResolver) Rounds(ctx context.Context, obj *model.Grade) ([]*model.Round, error) {
+	l := r.LogDuration(ctx, "Grade.Rounds")
+	defer l()
 	return dataloader.For(ctx).RoundsByID.Load(obj.ID)
 }
 
 func (r *mutationResolver) UpdateRound(ctx context.Context, id string, input model.RoundInput) (*model.RoundUpdateResult, error) {
+	l := r.LogDuration(ctx, "UpdateRound")
+	defer l()
 	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *queryResolver) Grade(ctx context.Context, id *string) (*model.Grade, error) {
-	l := r.LogDuration(ctx, "Grades")
+	l := r.LogDuration(ctx, "Grade")
 	defer l()
 
 	grade, err := r.GradeSvc.FindByID(ctx, *id)
@@ -33,7 +37,7 @@ func (r *queryResolver) Grade(ctx context.Context, id *string) (*model.Grade, er
 }
 
 func (r *queryResolver) Rounds(ctx context.Context, ids []string) ([]*model.Round, error) {
-	l := r.LogDuration(ctx, "RoundService")
+	l := r.LogDuration(ctx, "Rounds")
 	defer l()
 
 	rounds, err := r.RoundService.FindByIDs(ctx, ids)

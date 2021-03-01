@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"go.uber.org/zap"
+	"graphy/store/neo4j"
 	"graphy/transport/graphql/dataloader"
 	"net/http"
 	"time"
@@ -30,7 +31,9 @@ func NewRequestIDMiddleware(log *zap.Logger) RequestIDMiddleware {
 	}
 }
 
-func NewMiddlewares(g dataloader.GradeMiddleware, rID RequestIDMiddleware) Middlewares {
-	return []func(next http.HandlerFunc) http.HandlerFunc{g, rID}
+func NewMiddlewares(g dataloader.GradeMiddleware, rID RequestIDMiddleware, neo4j neo4j.Middleware) Middlewares {
+	// Middleware order should be:
+	//  Request ID, Neo4j, Authentication, Dataloader
+	return []func(next http.HandlerFunc) http.HandlerFunc{g, neo4j, rID}
 }
 

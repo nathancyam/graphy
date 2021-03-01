@@ -8,8 +8,9 @@ import (
 	"graphy/cmd/graphy/neo"
 	"graphy/pkg/competition/grades"
 	"graphy/pkg/competition/rounds"
-	grades2 "graphy/storage/graph/competition/grades"
-	rounds2 "graphy/storage/graph/competition/rounds"
+	"graphy/store/neo4j"
+	grades2 "graphy/store/neo4j/competition/grades"
+	rounds2 "graphy/store/neo4j/competition/rounds"
 	"graphy/transport/graphql"
 	"graphy/transport/graphql/dataloader"
 	"graphy/transport/http"
@@ -40,6 +41,7 @@ var graphqlSet = wire.NewSet(
 	graphql.NewResolver,
 	dataloader.NewGradeDLoader,
 	dataloader.NewDataloaderMiddleware,
+	neo4j.NewNeo4jSessionMiddleware,
 	http.NewRequestIDMiddleware,
 	http.NewMiddlewares,
 )

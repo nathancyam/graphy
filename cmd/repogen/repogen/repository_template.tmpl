@@ -7,7 +7,7 @@ import (
     "github.com/neo4j/neo4j-go-driver/neo4j"
     "go.uber.org/zap"
     {{range $i, $import := .Imports -}}
-    "{{$import}}"
+    {{$.RenderImport $import}}
     {{end -}}
 )
 
@@ -25,7 +25,7 @@ func (r Repository) {{$method.Definition.Name}}{{$method.Params}} {{$method.Retu
     {{if $method.IsSingular -}}
     var model {{$method.GetBaseModel}}
 
-    _, err := graph.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
+    _, err := neo4jstore.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
         out, err := tx.Run(`{{$method.Definition.Cypher}}`, map[string]interface{}{
             {{range $i, $p := $method.CypherParams -}}
             "{{$p}}": {{$p}},
@@ -62,7 +62,7 @@ func (r Repository) {{$method.Definition.Name}}{{$method.Params}} {{$method.Retu
     {{if $method.IsDataloader -}}
     var res = make({{$method.GetDataloaderMap}}, len({{$method.GetDataloaderSlice}}))
 
-    _, err := graph.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
+    _, err := neo4jstore.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
         out, err := tx.Run(`{{$method.Definition.Cypher}}`, map[string]interface{}{
             {{range $i, $p := $method.CypherParams -}}
             "{{$p}}": {{$p}},
@@ -101,7 +101,7 @@ func (r Repository) {{$method.Definition.Name}}{{$method.Params}} {{$method.Retu
     return res, err
     {{end -}}
     {{if $method.IsSlice -}}
-    res, err := graph.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
+    res, err := neo4jstore.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
         out, err := tx.Run("{{$method.Definition.Cypher}}", map[string]interface{}{
             {{range $i, $p := $method.CypherParams -}}
             "{{$p}}": {{$p}},
@@ -143,14 +143,14 @@ func (r Repository) {{$method.Definition.Name}}{{$method.Params}} {{$method.Retu
 func toList(i interface{}) ([]{{$model}}, error) {
 	col, ok := i.([]interface{})
 	if !ok {
-		return nil, graph.ErrNotSlice
+		return nil, neo4jstore.ErrNotSlice
 	}
 
 	var out = make([]{{$model}}, len(col))
 	for index, i := range col {
 		j, ok := i.({{$model}})
 		if !ok {
-			return nil, graph.ErrUnmarshal
+			return nil, neo4jstore.ErrUnmarshal
 		}
 		out[index] = j
 	}
@@ -160,7 +160,7 @@ func toList(i interface{}) ([]{{$model}}, error) {
 func hydrateStruct(model *{{$model}}, val interface{}) error {
 	node, ok := val.(neo4j.Node)
 	if !ok {
-		return graph.ErrNotNode
+		return neo4jstore.ErrNotNode
 	}
 
 	return mapstructure.Decode(node.Props(), model)

@@ -68,7 +68,7 @@ func Generate(yamlPath string) (string, error) {
 		models = append(models, m)
 	}
 
-	var imports []string
+	imports := []string{"neo4jstore graphy/store/neo4j"}
 	for _, i := range importLookup {
 		imports = append(imports, i)
 	}

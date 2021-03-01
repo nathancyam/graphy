@@ -7,7 +7,7 @@ import (
 	"github.com/neo4j/neo4j-go-driver/neo4j"
 	"go.uber.org/zap"
 	"graphy/pkg/competition/grades"
-	"graphy/storage/graph"
+	neo4jstore "graphy/store/neo4j"
 )
 
 type Repository struct {
@@ -22,8 +22,8 @@ func NewRepository(driver neo4j.Driver, logger *zap.Logger) *Repository {
 func (r Repository) FindByID(ctx context.Context, id string) (*grades.Grade, error) {
 	var model grades.Grade
 
-	_, err := graph.WithReadConnection(r.driver, func(tx neo4j.Transaction) (interface{}, error) {
-		out, err := tx.Run(`MATCH (grade:Grade) WHERE res.id = $id RETURN grade LIMIT 1`, map[string]interface{}{
+	_, err := neo4jstore.For(ctx).ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		out, err := tx.Run(`MATCH (grade:Grade) WHERE grade.id = $id RETURN grade LIMIT 1`, map[string]interface{}{
 			"id": id,
 		})
 		if err != nil {
@@ -52,20 +52,24 @@ func (r Repository) FindByID(ctx context.Context, id string) (*grades.Grade, err
 		return nil, err
 	}
 
+	if model.ID == "" {
+		return nil, errors.New("not found")
+	}
+
 	return &model, nil
 }
 
 func toList(i interface{}) ([]grades.Grade, error) {
 	col, ok := i.([]interface{})
 	if !ok {
-		return nil, graph.ErrNotSlice
+		return nil, neo4jstore.ErrNotSlice
 	}
 
 	var out = make([]grades.Grade, len(col))
 	for index, i := range col {
 		j, ok := i.(grades.Grade)
 		if !ok {
-			return nil, graph.ErrUnmarshal
+			return nil, neo4jstore.ErrUnmarshal
 		}
 		out[index] = j
 	}
@@ -75,7 +79,7 @@ func toList(i interface{}) ([]grades.Grade, error) {
 func hydrateStruct(model *grades.Grade, val interface{}) error {
 	node, ok := val.(neo4j.Node)
 	if !ok {
-		return graph.ErrNotNode
+		return neo4jstore.ErrNotNode
 	}
 
 	return mapstructure.Decode(node.Props(), model)

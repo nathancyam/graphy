@@ -1,6 +1,8 @@
-package graph
+package neo4j
 
-import "github.com/neo4j/neo4j-go-driver/neo4j"
+import (
+	"github.com/neo4j/neo4j-go-driver/neo4j"
+)
 
 func WithReadConnection(driver neo4j.Driver, work func(tx neo4j.Transaction) (interface{}, error)) (interface{}, error) {
 	session, err := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})

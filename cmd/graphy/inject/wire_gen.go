@@ -11,8 +11,9 @@ import (
 	"graphy/cmd/graphy/neo"
 	"graphy/pkg/competition/grades"
 	rounds2 "graphy/pkg/competition/rounds"
-	"graphy/storage/graph/competition/grades"
-	"graphy/storage/graph/competition/rounds"
+	"graphy/store/neo4j"
+	"graphy/store/neo4j/competition/grades"
+	"graphy/store/neo4j/competition/rounds"
 	"graphy/transport/graphql"
 	"graphy/transport/graphql/dataloader"
 	"graphy/transport/http"
@@ -36,7 +37,8 @@ func InitialiseAppServer(logger *zap.Logger) (*http.AppServer, func(), error) {
 	gradeRoundLoaderProvider := dataloader.NewGradeDLoader(serviceImpl)
 	gradeMiddleware := dataloader.NewDataloaderMiddleware(gradeRoundLoaderProvider)
 	requestIDMiddleware := http.NewRequestIDMiddleware(logger)
-	middlewares := http.NewMiddlewares(gradeMiddleware, requestIDMiddleware)
+	middleware := neo4j.NewNeo4jSessionMiddleware(logger, driver)
+	middlewares := http.NewMiddlewares(gradeMiddleware, requestIDMiddleware, middleware)
 	appServer := http.New(resolver, logger, noOpHealthCheck, middlewares)
 	return appServer, func() {
 		cleanup()
@@ -51,4 +53,4 @@ var roundSet = wire.NewSet(rounds.NewRoundRepository, wire.Bind(new(rounds2.Repo
 
 var gradeSet = wire.NewSet(grade.NewRepository, wire.Bind(new(grades.Repository), new(*grade.Repository)), grades.NewService)
 
-var graphqlSet = wire.NewSet(graphql.NewResolver, dataloader.NewGradeDLoader, dataloader.NewDataloaderMiddleware, http.NewRequestIDMiddleware, http.NewMiddlewares)
+var graphqlSet = wire.NewSet(graphql.NewResolver, dataloader.NewGradeDLoader, dataloader.NewDataloaderMiddleware, neo4j.NewNeo4jSessionMiddleware, http.NewRequestIDMiddleware, http.NewMiddlewares)

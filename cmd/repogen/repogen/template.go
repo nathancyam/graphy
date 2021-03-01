@@ -3,6 +3,7 @@ package repogen
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
 	"go/types"
 	"strings"
 	"text/template"
@@ -91,6 +92,14 @@ func (t TemplateParams) RepoName() string {
 
 func (t TemplateParams) Package() string {
 	return t.RepositoryDefinition.Package
+}
+
+func (t TemplateParams) RenderImport(imp string) string {
+	if strings.Contains(imp, " ") {
+		spl := strings.Split(imp, " ")
+		return fmt.Sprintf(`%s "%s"`, spl[0], spl[1])
+	}
+	return fmt.Sprintf(`"%s"`, imp)
 }
 
 var (
